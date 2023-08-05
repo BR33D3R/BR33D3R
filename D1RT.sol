@@ -94,6 +94,6 @@ function plantS33D(uint256 tokenId) public {
 
         emit SproutConfirmed(sproutAddress, newSproutId);
     }
-
+    event SproutPlanted(address indexed sproutAddress, uint256 indexed tokenId);
     event SproutConfirmed(address indexed sproutAddress, uint256 indexed tokenId);
 }
