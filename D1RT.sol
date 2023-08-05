@@ -68,7 +68,7 @@ function plantS33D(uint256 tokenId) public {
 
     getSprout[newSproutId] = sproutAddress;
 
-    ISprout(sproutAddress).initialize(msg.sender, _genus, _species, _variety);
+    ISprout(sproutAddress).initialize(msg.sender, _genus, _species, _variety, _type, _flowerCount);
 
     _s33ds.burn(tokenId);
 
