@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -48,8 +48,31 @@ contract D1RT is Ownable {
     _s33ds = s33ds;
     }
 
-    function plantS33D(uint256 tokenId) public {
-        _s33ds.safeTransferFrom(msg.sender, address(this), tokenId);
+function plantS33D(uint256 tokenId) public {
+    _s33ds.safeTransferFrom(msg.sender, address(this), tokenId);
+    // Get the S33D contract address from the token ID
+    address s33dAddress = getS33D[tokenId];
+    // Get the seed's properties
+    IS33D s33d = IS33D(s33dAddress);
+    string memory _genus = s33d.genus();
+    string memory _species = s33d.species();
+    string memory _variety = s33d.variety();
+
+    _tokenIdCounter.increment();
+    uint256 newSproutId = _tokenIdCounter.current();
+    bytes32 saltValue = bytes32(newSproutId);
+
+    address sproutAddress = Create2.deploy(0, saltValue, type(Sprout).creationCode);
+
+    require(sproutAddress != address(0), "Sprout deployment failed");
+
+    getSprout[newSproutId] = sproutAddress;
+
+    ISprout(sproutAddress).initialize(msg.sender, _genus, _species, _variety);
+
+    _s33ds.burn(tokenId);
+
+    emit SproutPlanted(sproutAddress, newSproutId);
     }
 
     function confirmSprout(uint256 tokenId, string memory _genus, string memory _species, string memory _variety) public onlyOwner {
