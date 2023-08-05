@@ -6,37 +6,37 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Create2.sol";
 import "@openzeppelin/contracts/utils/Counters.sol"; // Import the Counters library
 
-contract Seed is Ownable {
-    // Your custom seed logic here.
+contract S33D is Ownable {
+    // Your custom s33d logic here.
 }
 
-contract SeedFactory is ERC721, Ownable {
+contract S33DSFactory is ERC721, Ownable {
     using Counters for Counters.Counter; // Use the Counters library for the Counter type
     Counters.Counter private _tokenIdCounter;
 
-    bytes32 public constant SEED_BYTECODE_HASH = keccak256(type(Seed).creationCode);
+    bytes32 public constant S33D_BYTECODE_HASH = keccak256(type(S33D).creationCode);
 
-    mapping(uint256 => address) public getSeed;
+    mapping(uint256 => address) public getS33D;
 
-    constructor() ERC721("SeedFactory", "SF") {}
+    constructor() ERC721("S33DSFactory", "SF") {}
 
-    function createSeed() public onlyOwner {
+    function createS33D() public onlyOwner {
         _tokenIdCounter.increment();
 
         uint256 newItemId = _tokenIdCounter.current();
         bytes32 saltValue = bytes32(newItemId);
 
-        // Deploy a new Seed contract using Create2 library
-        address seedAddress = Create2.deploy(0, saltValue, type(Seed).creationCode);
+        // Deploy a new S33D contract using Create2 library
+        address s33dAddress = Create2.deploy(0, saltValue, type(S33D).creationCode);
 
-        require(seedAddress != address(0), "Seed deployment failed");
+        require(s33dAddress != address(0), "S33D deployment failed");
 
-        getSeed[newItemId] = seedAddress;
+        getS33D[newItemId] = s33dAddress;
 
         _mint(msg.sender, newItemId);
 
-        emit SeedCreated(seedAddress, newItemId);
+        emit S33DCreated(s33dAddress, newItemId);
     }
 
-    event SeedCreated(address indexed seedAddress, uint256 indexed tokenId);
+    event S33DCreated(address indexed s33dAddress, uint256 indexed tokenId);
 }
