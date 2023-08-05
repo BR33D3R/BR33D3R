@@ -2,12 +2,30 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Create2.sol";
 import "@openzeppelin/contracts/utils/Counters.sol"; // Import the Counters library
 
-contract S33D is Ownable {
-    // Your custom s33d logic here.
+interface IS33D {
+    function initialize(string memory _genus, string memory _species, string memory _variety) external;
+}
+
+contract S33D is ERC721, Ownable, IS33D {
+    string public genus;
+    string public species;
+    string public variety;
+
+    constructor() ERC721("S33D", "S33D") {} // Set a standard name and symbol
+
+    function initialize(string memory _genus, string memory _species, string memory _variety) external override {
+        genus = _genus;
+        species = _species;
+        variety = _variety;
+    }
 }
 
 contract S33DSFactory is ERC721, Ownable {
@@ -18,9 +36,9 @@ contract S33DSFactory is ERC721, Ownable {
 
     mapping(uint256 => address) public getS33D;
 
-    constructor() ERC721("S33DSFactory", "SF") {}
+    constructor() ERC721("SeedFactory", "SF") {}
 
-    function createS33D() public onlyOwner {
+    function createS33D(string memory _genus, string memory _species, string memory _variety) public onlyOwner {
         _tokenIdCounter.increment();
 
         uint256 newItemId = _tokenIdCounter.current();
@@ -32,6 +50,8 @@ contract S33DSFactory is ERC721, Ownable {
         require(s33dAddress != address(0), "S33D deployment failed");
 
         getS33D[newItemId] = s33dAddress;
+
+        IS33D(s33dAddress).initialize(_genus, _species, _variety);
 
         _mint(msg.sender, newItemId);
 
