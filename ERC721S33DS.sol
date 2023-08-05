@@ -28,6 +28,7 @@ contract S33D is ERC721, Ownable, IS33D {
     }
 }
 
+
 contract S33DSFactory is ERC721, Ownable {
     using Counters for Counters.Counter; // Use the Counters library for the Counter type
     Counters.Counter private _tokenIdCounter;
