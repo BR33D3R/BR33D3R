@@ -1,68 +1,179 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Create2.sol";
-import "@openzeppelin/contracts/utils/Counters.sol"; 
 
-interface IS33DSFactory {
-    function createS33D(string memory _genus, string memory _species, string memory _variety) external;
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
+import "S33DSFactory.sol";
+
+/**
+ * @title ISprout
+ * @dev This interface allows to initialize and clone a new Sprout.
+ */
+interface ISprout {
+    function initialize(
+        address owner,
+        uint256 _type,
+        uint256 _flowerCount,
+        string memory _genus,
+        string memory _species,
+        string memory _variety
+    ) external;
+    function cloneSprout(address newOwner) external returns (address);
 }
 
-contract S33D is ERC721, Ownable {
+/**
+ * @title ID1RT
+ * @dev This interface allows to update and get the Sprout implementation.
+ */
+interface ID1RT {
+    function sproutImplementation() external view returns (address);
+    function updateSproutImplementation(address newImplementation) external;
+}
+
+/**
+ * @title Sprout
+ * @dev This contract represents a sprout, which includes various details of the plant. Inherits from ERC721 and Ownable.
+ */
+contract Sprout is ERC721, Ownable {
+    // Variables that store information about the plant's type, genus, species, variety, and other related data.
+    uint256 public plantType; // 0 = flower, 1 = pollen
     string public genus;
     string public species;
     string public variety;
+    uint256 public flowerCount;
+    uint256 public seedCount;
+    uint256 public pollinationCount;
+    uint256 public pollinationPeriod;
+    uint256 public cloningPeriodStart;
+    address public pollenAddress;
 
-    constructor() ERC721("S33D", "S33D") {}
+    // Boolean variables indicating the current state of the sprout (whether it's flowering, pollinated, or harvested).
+    bool public isFlowering = false;
+    bool public isPollinated = false;
+    bool public isHarvested = false;
 
-    function initialize(string memory _genus, string memory _species, string memory _variety) external  onlyOwner {
+    // Address of the parent sprout.
+    address public parent;
+
+    // Instance of the S33DSFactory contract.
+    IS33DSFactory private _s33ds;
+
+    // Constructor that sets the token's name and symbol.
+    constructor() ERC721("Sprout", "PLANT") {}
+
+    /**
+     * @dev Initializes the Sprout with plant details and ownership. Can only be called by the owner.
+     */
+    function initialize(
+        address owner,
+        uint256 _plantType,
+        uint256 _flowerCount,
+        string memory _genus,
+        string memory _species,
+        string memory _variety,
+        IS33DSFactory s33ds  // pass the IS33DSFactory instance here
+    ) external onlyOwner {
+        // Transfers the ownership to the provided address.
+        transferOwnership(owner);
+
+        // Assigns the plant details.
+        plantType = _plantType;
+        flowerCount = _flowerCount;
         genus = _genus;
         species = _species;
         variety = _variety;
-    }
-}
 
-contract S33DSFactory is ERC721, ERC721Burnable, Ownable, IS33DSFactory {
-    using Counters for Counters.Counter;
-    Counters.Counter private _tokenIdCounter;
+        // Sets the cloning period start time.
+        cloningPeriodStart = block.timestamp + 2 weeks;
 
-    bytes32 public constant S33D_BYTECODE_HASH = keccak256(type(S33D).creationCode);
-
-    mapping(uint256 => address) public getS33D;
-
-    constructor() ERC721("SeedFactory", "SF") {}
-
-    event S33DCreated(address indexed s33dAddress, uint256 indexed tokenId);
-
-    function createS33D(string memory _genus, string memory _species, string memory _variety) public override onlyOwner {
-        _tokenIdCounter.increment();
-
-        uint256 newItemId = _tokenIdCounter.current();
-        bytes32 saltValue = bytes32(newItemId);
-
-        address s33dAddress = Create2.deploy(0, saltValue, type(S33D).creationCode);
-
-        require(s33dAddress != address(0), "S33D deployment failed");
-
-        getS33D[newItemId] = s33dAddress;
-
-        S33D(s33dAddress).initialize(_genus, _species, _variety);
-
-        _mint(msg.sender, newItemId);
-
-        emit S33DCreated(s33dAddress, newItemId);
+        // Sets the S33DSFactory contract instance.
+        _s33ds = s33ds;  // set _s33ds here instead of constructor
     }
 
-    function burn(uint256 tokenId) public override {
-        require(_exists(tokenId), "ERC721Burnable: operator query for nonexistent token");
+    /**
+     * @dev Sets the isFlowering state. Can only be called by the owner.
+     */
+    function setIsFlowering(bool _isFlowering) external onlyOwner {
+        isFlowering = _isFlowering;
+    }
 
-        // Call OpenZeppelin's burn
-        super.burn(tokenId);
+    /**
+     * @dev Sets the isPollinated state. Can only be called by the owner.
+     */
+    function setIsPollinated(bool _isPollinated) external onlyOwner {
+        isPollinated = _isPollinated;
+    }
 
-        // Renounce ownership of the contract to the 0x0 burn address
-        transferOwnership(address(0));
+    /**
+     * @dev Sets the isHarvested state. Can only be called by the owner.
+     */
+    function setIsHarvested(bool _isHarvested) external onlyOwner {
+        isHarvested = _isHarvested;
+    }
+
+    /**
+     * @dev Starts the flowering of the plant. Can only be called by the owner.
+     */
+    function startFlowering(uint256 _pollinationPeriod) external onlyOwner {
+        require(!isFlowering, "Already flowering");
+
+        // Sets the plant's state to flowering.
+        isFlowering = true;
+
+        // Sets the pollination period.
+        pollinationPeriod = block.timestamp + _pollinationPeriod;
+    }
+
+    /**
+     * @dev Pollinates the plant. Can only be called by the owner.
+     */
+    function pollinate(address pollen) external onlyOwner {
+        require(isFlowering && !isPollinated && block.timestamp <= pollinationPeriod, "Cannot pollinate at this time");
+        
+        // Assigns the pollen address.
+        pollenAddress = pollen;
+        
+        // Sets the plant's state to pollinated.
+        isPollinated = true;
+
+        // Increments the pollination count.
+        pollinationCount++;
+    }
+
+    /**
+     * @dev Clones a sprout and returns the new sprout's address. Can only be called by the owner.
+     */
+    function cloneSprout(address newOwner, address d1rtAddress) external onlyOwner returns (address) {
+        require(!isFlowering && block.timestamp >= cloningPeriodStart, "Cannot clone at this time");
+
+        // Creates a new sprout using the implementation from the D1RT contract.
+        address sproutAddress = Clones.clone(ID1RT(d1rtAddress).sproutImplementation());
+        
+        // Initializes the new sprout.
+        ISprout sprout = ISprout(sproutAddress);
+        sprout.initialize(newOwner, plantType, flowerCount, genus, species, variety);
+
+        // Updates the sprout implementation on the D1RT contract.
+        ID1RT(d1rtAddress).updateSproutImplementation(sproutAddress);
+
+        // Returns the new sprout's address.
+        return sproutAddress;
+    }
+    
+    /**
+     * @dev Harvests the plant and mints new S33D tokens. Can only be called by the owner.
+     */
+    function harvest() external onlyOwner {
+        require(isPollinated && !isHarvested && block.timestamp > pollinationPeriod, "Cannot harvest at this time");
+
+        // Sets the plant's state to harvested.
+        isHarvested = true;
+
+        // For each flower, creates a new S33D token.
+        for (uint256 i = 0; i < flowerCount; i++) {
+           _s33ds.createS33D(genus, species, variety);
+        }
     }
 }
