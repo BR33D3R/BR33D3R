@@ -10,6 +10,8 @@ Sprout Contract: This contract is another ERC721 token, representing a "sprouted
 D1RT (Dirt) Contract: This contract allows a S33D token to be planted and thus turned into a Sprout token. The contract burns the S33D token and creates a new Sprout token.
 
 Key Concepts
+
+
 Planting a Seed: The planting process is metaphorical. It involves burning a S33D (ERC721 token) and deploying a new Sprout contract. This process of burning and deploying a new contract mimics the real-world process of a seed turning into a plant.
 
 Flowering and Pollination: The Sprout contract has the ability to start the flowering process and the plant can then be pollinated.
