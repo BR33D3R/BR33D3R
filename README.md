@@ -32,4 +32,3 @@ Additional Validation: Some functions lack rigorous validation. For instance, th
 
 Event Logging: More events could be emitted to allow for better off-chain tracking of contract interactions.
 
-Natspec Comments: The contracts could benefit from more detailed Natspec comments, particularly for functions, to provide a better understanding of their purpose and how they work.
