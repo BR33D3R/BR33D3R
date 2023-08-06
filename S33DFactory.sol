@@ -6,25 +6,27 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Create2.sol";
 import "@openzeppelin/contracts/utils/Counters.sol"; 
 
-interface IS33D {
-    function initialize(string memory _genus, string memory _species, string memory _variety) external;
+interface IS33DSFactory {
+    function createS33D(string memory _genus, string memory _species, string memory _variety) external;
 }
 
-contract S33D is ERC721, Ownable, IS33D {
+contract S33D is ERC721, Ownable {
     string public genus;
     string public species;
     string public variety;
 
     constructor() ERC721("S33D", "S33D") {}
 
-    function initialize(string memory _genus, string memory _species, string memory _variety) external override onlyOwner {
+    function initialize(string memory _genus, string memory _species, string memory _variety) external  onlyOwner {
         genus = _genus;
         species = _species;
         variety = _variety;
     }
+
+
 }
 
-contract S33DSFactory is ERC721, Ownable {
+contract S33DSFactory is ERC721, Ownable, IS33DSFactory {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIdCounter;
 
@@ -34,7 +36,9 @@ contract S33DSFactory is ERC721, Ownable {
 
     constructor() ERC721("SeedFactory", "SF") {}
 
-    function createS33D(string memory _genus, string memory _species, string memory _variety) public onlyOwner {
+    event S33DCreated(address indexed s33dAddress, uint256 indexed tokenId);
+
+    function createS33D(string memory _genus, string memory _species, string memory _variety) public override onlyOwner {
         _tokenIdCounter.increment();
 
         uint256 newItemId = _tokenIdCounter.current();
@@ -46,12 +50,12 @@ contract S33DSFactory is ERC721, Ownable {
 
         getS33D[newItemId] = s33dAddress;
 
-        IS33D(s33dAddress).initialize(_genus, _species, _variety);
+        S33D(s33dAddress).initialize(_genus, _species, _variety);
 
         _mint(msg.sender, newItemId);
 
         emit S33DCreated(s33dAddress, newItemId);
     }
 
-    event S33DCreated(address indexed s33dAddress, uint256 indexed tokenId);
+ 
 }
