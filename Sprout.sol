@@ -43,9 +43,9 @@ contract Sprout is ERC721, Ownable {
     address public parent;
     IS33DSFactory private _s33ds;
 
-    constructor(IS33DSFactory s33ds) ERC721("Sprout", "SPT") {
-        _s33ds = s33ds;
+     constructor() ERC721("Sprout", "PLANT") {
     }
+
 
     function initialize(
         address owner,
@@ -53,7 +53,8 @@ contract Sprout is ERC721, Ownable {
         uint256 _flowerCount,
         string memory _genus,
         string memory _species,
-        string memory _variety
+        string memory _variety,
+        IS33DSFactory s33ds  // pass the IS33DSFactory instance here
     ) external onlyOwner {
         transferOwnership(owner);
         plantType = _plantType;
@@ -62,7 +63,9 @@ contract Sprout is ERC721, Ownable {
         species = _species;
         variety = _variety;
         cloningPeriodStart = block.timestamp + 2 weeks;
+        _s33ds = s33ds;  // set _s33ds here instead of constructor
     }
+
     function setIsFlowering(bool _isFlowering) external onlyOwner {
         isFlowering = _isFlowering;
     }
@@ -80,8 +83,6 @@ contract Sprout is ERC721, Ownable {
         isFlowering = true;
         pollinationPeriod = block.timestamp + _pollinationPeriod;
     }
-
-
 
     function pollinate(address pollen) external onlyOwner {
         require(isFlowering && !isPollinated && block.timestamp <= pollinationPeriod, "Cannot pollinate at this time");
@@ -115,5 +116,5 @@ contract Sprout is ERC721, Ownable {
             // Mint a new S33D for each flower.
            _s33ds.createS33D(genus, species, variety);
         }
-        }
     }
+}
