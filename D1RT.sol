@@ -1,7 +1,6 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
 
-// Import necessary contracts and utilities from OpenZeppelin and local contracts.
 import "./S33DSFactory.sol";
 import "./Sprout.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
