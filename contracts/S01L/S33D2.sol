@@ -11,7 +11,9 @@ import "./interfaces/IGenusSpeciesVariety.sol";
 import "./interfaces/SeedData.sol";
 import "./S33D.sol";
 
-
+/// @title S33D2 Smart Contract
+/// @notice This contract represents unique seed tokens (S33D2) that are ERC721 compliant, burnable, and have additional traits (genus, species, variety).
+/// @dev Contract is ownable, ensuring certain actions can only be performed by the contract owner.
 contract S33D2 is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
     using Counters for Counters.Counter;
 
@@ -23,6 +25,10 @@ contract S33D2 is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
 
     IGenusSpeciesVariety public genusSpeciesVarietyGenerator; // Add a state variable to hold the generator contract address
 
+    /// @notice Construct an instance of the contract, minting a number of initial seeds.
+    /// @dev The initial seeds do not have their traits assigned yet.
+    /// @param _flowerCount The number of initial seeds to mint.
+    /// @param _genusSpeciesVarietyGenerator The address of the contract that will generate the seed traits.
     constructor(uint256 _flowerCount, address _genusSpeciesVarietyGenerator) ERC721("S33D2", "S33D2") {
         flowerCount = _flowerCount;
         genusSpeciesVarietyGenerator = IGenusSpeciesVariety(_genusSpeciesVarietyGenerator); // Initialize the generator contract
@@ -32,7 +38,12 @@ contract S33D2 is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
             _mint(msg.sender, newTokenId);
         }
     }
-   
+
+    /// @notice Initialize the traits for all initial seeds.
+    /// @dev The function can only be called by the contract owner, and can only be called once.
+    /// @param _genus The genus of the seeds.
+    /// @param _species The species of the seeds.
+    /// @param _variety The variety of the seeds.
     function initializeSeeds(
         string memory _genus,
         string memory _species,
@@ -50,6 +61,13 @@ contract S33D2 is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
             });
         }
     }
+
+    /// @notice Internal function to mint a seed with specific traits.
+    /// @dev Creates a new seed data and stores it in the s33dData mapping against the token ID.
+    /// @param to The recipient of the new seed.
+    /// @param _genus The genus of the seed.
+    /// @param _species The species of the seed.
+    /// @param _variety The variety of the seed.
     function _mint(
         address to,
         string memory _genus,
@@ -66,6 +84,12 @@ contract S33D2 is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
         _safeMint(to, newTokenId);
     }
 
+    /// @notice Mint a new seed for the owner of the contract.
+    /// @dev The function can only be called by the contract owner.
+    /// @param to The recipient of the new seed.
+    /// @param _genus The genus of the seed.
+    /// @param _species The species of the seed.
+    /// @param _variety The variety of the seed.
     function mintForOwner(
         address to,
         string memory _genus,
@@ -74,6 +98,14 @@ contract S33D2 is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
     ) external onlyOwner {
         _mint(to, _genus, _species, _variety);
     }
+
+    /// @notice Mint a specified amount of new seeds and transfer them to the specified address.
+    /// @dev The function can only be called by the contract owner.
+    /// @param to The recipient of the new seeds.
+    /// @param amount The amount of new seeds to mint.
+    /// @param _genus The genus of the seeds.
+    /// @param _species The species of the seeds.
+    /// @param _variety The variety of the seeds.
     function adminMint(
         address to,
         uint256 amount,
@@ -95,14 +127,22 @@ contract S33D2 is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
         }
     }
 
+    /// @notice Burn a specific token.
+    /// @dev The function can only be called by the contract owner.
+    /// @param tokenId The ID of the token to burn.
     function burn(uint256 tokenId) public override onlyOwner {
         _burn(tokenId);
     }
 
-        function setCost(uint256 newCost) public onlyOwner {
+    /// @notice Set the cost for minting a new seed.
+    /// @dev The function can only be called by the contract owner.
+    /// @param newCost The new cost for minting a seed.
+    function setCost(uint256 newCost) public onlyOwner {
         cost = newCost;
     }
 
+    /// @notice Withdraw all funds from the contract to the owner's address.
+    /// @dev The function can only be called by the contract owner.
     function withdraw() public onlyOwner {
         uint balance = address(this).balance;
         payable(msg.sender).transfer(balance);
