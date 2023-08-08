@@ -11,9 +11,10 @@ import "./interfaces/ID1RT.sol";
 import "./S01L.sol";
 import "./S33D2.sol";
 
-/// @title Sprout Contract
-/// @notice This contract represents a unique plant that can be cloned, pollinated and harvested. 
-/// @dev Contract is ownable, ensuring certain actions can only be performed by the plant owner.
+/**
+ * @title Sprout contract
+ * @dev Implements the operations of the Sprout tokens
+ */
 contract Sprout is ERC721, Ownable {
     uint256 public plantType; // 0 = flower, 1 = pollen
     string public genus;
@@ -43,18 +44,20 @@ contract Sprout is ERC721, Ownable {
     // Mapping of seeds to their generation
     mapping(string => uint256) public seedGenerations;
 
-    /// @notice Constructs an instance of the Sprout contract.
-    /// @dev The initial state of the plant is not flowering, not pollinated, and not harvested.
+    /**
+     * @dev Contract constructor
+     */
     constructor() ERC721("Sprout", "SPT") {}
 
-    /// @notice Initializes the plant with given parameters.
-    /// @dev The function can only be called by the contract owner.
-    /// @param owner The owner of the plant.
-    /// @param _plantType The type of the plant (0 for flower, 1 for pollen).
-    /// @param _flowerCount The number of flowers the plant will produce when it's harvested.
-    /// @param _genus The genus of the plant.
-    /// @param _species The species of the plant.
-    /// @param _variety The variety of the plant.
+    /**
+     * @dev Initialize sprout with given parameters
+     * @param owner address of the owner
+     * @param _plantType plant type of the sprout
+     * @param _flowerCount count of flowers for the sprout
+     * @param _genus genus of the sprout
+     * @param _species species of the sprout
+     * @param _variety variety of the sprout
+     */
     function initialize(
         address owner,
         uint256 _plantType,
@@ -72,79 +75,75 @@ contract Sprout is ERC721, Ownable {
         cloningPeriodStart = block.timestamp + 2 weeks;
     }
 
-    /// @notice Sets the flowering state of the plant.
-    /// @dev The function can only be called by the plant owner.
-    /// @param _isFlowering The new flowering state of the plant.
+    /**
+     * @dev Set the flowering status of the sprout
+     * @param _isFlowering flowering status to set
+     */
     function setIsFlowering(bool _isFlowering) external onlyOwner {
         isFlowering = _isFlowering;
     }
 
-    /// @notice Sets the pollinated state of the plant.
-    /// @dev The function can only be called by the plant owner.
-    /// @param _isPollinated The new pollinated state of the plant.
+    /**
+     * @dev Set the pollination status of the sprout
+     * @param _isPollinated pollination status to set
+     */
     function setIsPollinated(bool _isPollinated) external onlyOwner {
         isPollinated = _isPollinated;
     }
 
-    /// @notice Sets the harvested state of the plant.
-    /// @dev The function can only be called by the plant owner.
-    /// @param _isHarvested The new harvested state of the plant.
+    /**
+     * @dev Set the harvested status of the sprout
+     * @param _isHarvested harvested status to set
+     */
     function setIsHarvested(bool _isHarvested) external onlyOwner {
         isHarvested = _isHarvested;
     }
 
-    /// @notice Starts the flowering process of the plant.
-    /// @dev The function can only be called by the plant owner. The plant cannot already be flowering.
-    /// @param _pollinationPeriod The length of the pollination period in seconds.
+    /**
+     * @dev Start the flowering process of the sprout
+     * @param _pollinationPeriod pollination period for the sprout
+     */
     function startFlowering(uint256 _pollinationPeriod) external onlyOwner {
         require(!isFlowering, "Already flowering");
         isFlowering = true;
         pollinationPeriod = block.timestamp + _pollinationPeriod;
     }
 
-    /// @notice Pollinates the plant.
-    /// @dev The function can only be called by the plant owner. The plant must be flowering and not already pollinated, and it must be within the pollination period.
-    /// @param pollen The address of the pollen to use.
+    /**
+     * @dev Pollinate the sprout
+     * @param pollen address of the pollen used for pollination
+     */
     function pollinate(address pollen) external onlyOwner {
         require(isFlowering && !isPollinated && block.timestamp <= pollinationPeriod, "Cannot pollinate at this time");
-        
-        // Use the pollen argument here
         pollenAddress = pollen;
-        
         isPollinated = true;
         pollinationCount++;
     }
 
-    /// @notice Clones the plant and transfers ownership to a new owner.
-    /// @dev The function can only be called by the plant owner. The plant cannot be flowering, and it must be after the cloning period start time.
-    /// @param newOwner The owner of the new cloned plant.
-    /// @param d1rtAddress The address of the D1RT contract.
-    /// @return The address of the new cloned plant.
+    /**
+     * @dev Clone the sprout
+     * @param newOwner address of the new owner of the cloned sprout
+     * @param d1rtAddress address of the D1RT contract
+     * @return address of the cloned sprout
+     */
     function cloneSprout(address newOwner, address d1rtAddress) external onlyOwner returns (address) {
         require(!isFlowering && block.timestamp >= cloningPeriodStart, "Cannot clone at this time");
-
         address sproutAddress = Clones.clone(ID1RT(d1rtAddress).sproutImplementation());
-        
         ISprout sprout = ISprout(sproutAddress);
         sprout.initialize(newOwner, plantType, flowerCount, genus, species, variety);
-
-        // Update the sprout implementation on D1RT
         ID1RT(d1rtAddress).updateSproutImplementation(sproutAddress);
-
         return sproutAddress;
     }
 
-    /// @notice Harvests the plant by minting seed tokens.
-    /// @dev The function can only be called by the plant owner. The plant must be pollinated and not already harvested.
+    /**
+     * @dev Harvest the sprout and create S33D2 tokens
+     */
     function harvest() external onlyOwner {
         require(isPollinated && !isHarvested, "Cannot harvest at this time");
         isHarvested = true;
-
         for (uint256 i = 0; i < flowerCount; i++) {
             _s33d2.mintForOwner(owner(), genus, species, variety);
         }
-
-        // increment the currentGeneration
         currentGeneration++;
     }
 }
