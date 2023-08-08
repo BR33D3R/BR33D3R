@@ -1,36 +1,24 @@
 This protocol is a novel approach to biological asset represntation on chain and is an attempt at rethinking the  creation and management of real life items on Ethereum. It is designed around the theme of planting and harvesting, and is a metaphor for creating and managing unique digital assets. but it is important to note that this could be used to organize any biological species going through a breeding process(I.e. Dogs, Cats, Birds, all plants, especially flowering and fruiting plants. 
 
-Key Components
-S33D (Seed) Contract: This contract is an ERC721 token (Non-Fungible Token). Each unique seed (S33D) token has unique properties such as genus, species, and variety. The initialize function allows the owner to set these properties.
+High-Level Overview
 
-S33DSFactory Contract: This contract serves as a factory for creating new S33D contracts (i.e., new seed tokens). It deploys a new S33D contract for each seed using the Create2 function, which allows a contract to be deployed at a predictable address. This factory contract tracks the deployed S33D contracts and emits an event when a new S33D contract is created.
+Sprout: This contract is for creating unique plant NFTs. The contract contains variables to represent the properties of a plant, functions to set its stages (flowering, pollinated, harvested), to start flowering, pollinate, clone and harvest the plant. It uses the ERC721 contract from OpenZeppelin to manage unique tokens for each sprout (plant).
 
-Sprout Contract: This contract is another ERC721 token, representing a "sprouted" seed. This sprouted seed or plant has properties such as plantType, flowerCount, genus, species, and variety. The state of the plant can be changed over time using various functions.
+S33D2 and S33D: These contracts are for creating seed NFTs. Both have similar functionality but are slightly different. They have a function for minting seeds and initializing them with specific properties (genus, species, variety). These contracts also have a burn function which in turn calls the burnAndPlant function from S01L contract.
 
-D1RT (Dirt) Contract: This contract allows a S33D token to be planted and thus turned into a Sprout token. The contract burns the S33D token and creates a new Sprout token.
+S01L: This contract seems to handle the lifecycle from seed to plant (sprout). It has functions to add new S33D contracts to its whitelisted contracts, and a function to plant a new sprout. The burnAndPlant function seems to be used to burn a seed token and in turn create a new sprout (plant) token.
 
-Key Concepts
+Low-Level Overview
 
+Sprout: The Sprout contract is derived from the ERC721 and Ownable contracts, which makes it an NFT and allows for access control based on ownership. It has several public variables representing various properties of a plant (like genus, species, variety, etc.). It has the function initialize to initialize a plant with properties; setIsFlowering, setIsPollinated, setIsHarvested to set the stages of the plant. The startFlowering and pollinate functions to start the flowering process and pollinate the plant. It can clone the plant using the cloneSprout function and harvest the plant using harvest function which mints seed tokens.
 
-Planting a Seed: The planting process is metaphorical. It involves burning a S33D (ERC721 token) and deploying a new Sprout contract. This process of burning and deploying a new contract mimics the real-world process of a seed turning into a plant.
+S33D2 and S33D: Both these contracts are similar, and derived from ERC721, ERC721Burnable, Ownable and ReentrancyGuard. These contracts create seed NFTs. They have a initializeSeeds function to initialize seed properties, and mint and adminMint functions to mint new seed tokens. The burn function burns a token, and calls the burnAndPlant function of S01L contract.
 
-Flowering and Pollination: The Sprout contract has the ability to start the flowering process and the plant can then be pollinated.
+S01L: The S01L contract is derived from Ownable contract and it manages the lifecycle from seed to plant. It has functions S0WS33D and S0WS33D2 to add S33D and S33D2 contracts to its whitelist, respectively. The plantSprout function creates a new plant (sprout) token. The burnAndPlant function is used to burn a seed token and in turn, create a new sprout (plant) token. This function can only be called by whitelisted contracts.
 
-Cloning and Harvesting: The Sprout contract also has the functionality of being cloned and harvested. The harvest function creates new S33D contracts for each flower on the plant. The cloneSprout function creates a new Sprout contract, mimicking the propagation of plants in the real world.
+In terms of how the contracts interact:
 
-Technical Strengths
-Efficient Use of EIPs and Libraries: The protocol efficiently uses ERC721 standard for NFTs, the OpenZeppelin contracts for secure contract development, and the Create2 function for predictable contract deployment.
-
-Code Reusability: The use of interfaces and factory contracts promotes code reusability.
-
-Detailed State Management: The state of the Sprout contract is meticulously managed, mimicking the lifecycle of a plant.
-
-Areas of Improvement
-Code Modularity: The contracts could be split up more to improve modularity. For instance, the actions of flowering, pollination, and harvesting could each be their own contract.
-
-Access Controls: Currently, most actions can only be performed by the contract owner. It might be beneficial to add more roles and permissions.
-
-Additional Validation: Some functions lack rigorous validation. For instance, the cloneSprout function does not check if the plant has already been cloned.
-
-Event Logging: More events could be emitted to allow for better off-chain tracking of contract interactions.
-
+The Sprout contract is used to manage plant tokens.
+The S33D2 and S33D contracts are used to manage seed tokens.
+The S01L contract manages the process of burning a seed token and creating a plant token. Only the S33D2 and S33D contracts, which are whitelisted, can call this function.
+Note: The exact flow between these contracts would depend on external function calls not shown in the given code, as these contracts seem to be part of a larger ecosystem.
