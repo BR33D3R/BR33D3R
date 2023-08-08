@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.20;
 
+// Importing OpenZeppelin libraries for safe math, counter, reentrancy protection, ERC721 functionality, and ownership
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -10,40 +11,50 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "./interfaces/IGenusSpeciesVariety.sol"; 
 import "./interfaces/SeedData.sol";
 import "./S33D.sol";
+import "./S01L.sol";
 
-/// @title S33D2 Smart Contract
-/// @notice This contract represents unique seed tokens (S33D2) that are ERC721 compliant, burnable, and have additional traits (genus, species, variety).
-/// @dev Contract is ownable, ensuring certain actions can only be performed by the contract owner.
+/**
+ * @title S33D2 contract
+ * @dev Implements the operations of the S33D2 tokens
+ */
 contract S33D2 is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
-    using Counters for Counters.Counter;
+    using Counters for Counters.Counter; // Using OpenZeppelin utility for handling token IDs
 
-    Counters.Counter private _tokenIdCounter;
-    mapping(uint256 => S33DData) public s33dData;
-    uint256 public flowerCount;
-    uint256 public cost = 0 ether;
-    S33D private _s33d;
+    Counters.Counter private _tokenIdCounter; // Counter for assigning token IDs
+    mapping(uint256 => S33DData) public s33dData; // Mapping from token ID to its corresponding data
+    uint256 public flowerCount; // The count of flowers
+    uint256 public cost = 0 ether; // Cost to mint a token
+    S33D private _s33d; // Reference to the S33D contract
+    S01L private _s01l; // Reference to the S01L contract
 
-    IGenusSpeciesVariety public genusSpeciesVarietyGenerator; // Add a state variable to hold the generator contract address
+    IGenusSpeciesVariety public genusSpeciesVarietyGenerator; // Interface for GenusSpeciesVariety generator
 
-    /// @notice Construct an instance of the contract, minting a number of initial seeds.
-    /// @dev The initial seeds do not have their traits assigned yet.
-    /// @param _flowerCount The number of initial seeds to mint.
-    /// @param _genusSpeciesVarietyGenerator The address of the contract that will generate the seed traits.
-    constructor(uint256 _flowerCount, address _genusSpeciesVarietyGenerator) ERC721("S33D2", "S33D2") {
+    event SeedPlanted(uint256 indexed tokenId, address indexed owner); // Event emitted when a seed is planted
+
+    /**
+     * @dev Contract constructor
+     * @param _flowerCount number of flowers to mint
+     * @param _genusSpeciesVarietyGenerator address of the GenusSpeciesVarietyGenerator contract
+     * @param s01l address of the S01L contract
+     */
+    constructor(uint256 _flowerCount, address _genusSpeciesVarietyGenerator, S01L s01l) ERC721("S33D2", "S33D2") {
         flowerCount = _flowerCount;
-        genusSpeciesVarietyGenerator = IGenusSpeciesVariety(_genusSpeciesVarietyGenerator); // Initialize the generator contract
+        genusSpeciesVarietyGenerator = IGenusSpeciesVariety(_genusSpeciesVarietyGenerator);
+        _s01l = s01l;
+
         for (uint256 i = 0; i < flowerCount; i++) {
             _tokenIdCounter.increment();
             uint256 newTokenId = _tokenIdCounter.current();
             _mint(msg.sender, newTokenId);
         }
     }
-
-    /// @notice Initialize the traits for all initial seeds.
-    /// @dev The function can only be called by the contract owner, and can only be called once.
-    /// @param _genus The genus of the seeds.
-    /// @param _species The species of the seeds.
-    /// @param _variety The variety of the seeds.
+   
+    /**
+     * @dev Initialize seeds with the given genus, species, and variety
+     * @param _genus Genus of the seed
+     * @param _species Species of the seed
+     * @param _variety Variety of the seed
+     */
     function initializeSeeds(
         string memory _genus,
         string memory _species,
@@ -62,12 +73,31 @@ contract S33D2 is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
         }
     }
 
-    /// @notice Internal function to mint a seed with specific traits.
-    /// @dev Creates a new seed data and stores it in the s33dData mapping against the token ID.
-    /// @param to The recipient of the new seed.
-    /// @param _genus The genus of the seed.
-    /// @param _species The species of the seed.
-    /// @param _variety The variety of the seed.
+    /**
+     * @dev Plants a seed (burns a token)
+     * @param tokenId ID of the token to be burned
+     */
+    function plant(uint256 tokenId) internal {
+        super._burn(tokenId);
+        emit SeedPlanted(tokenId, msg.sender);
+    }
+
+    /**
+     * @dev Burn a token and plant a sprout
+     * @param tokenId ID of the token to be burned
+     */
+    function burn(uint256 tokenId) public override nonReentrant onlyOwner {
+        require(ownerOf(tokenId) == _msgSender(), "ERC721Burnable: caller is not owner");
+        _s01l.burnAndPlant(tokenId);
+    }
+
+    /**
+     * @dev Mint a new S33D2 token
+     * @param to Address to receive the minted tokens
+     * @param _genus Genus of the seed
+     * @param _species Species of the seed
+     * @param _variety Variety of the seed
+     */
     function _mint(
         address to,
         string memory _genus,
@@ -81,69 +111,21 @@ contract S33D2 is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
             species: _species,
             variety: _variety
         });
-        _safeMint(to, newTokenId);
+        _mint(to, newTokenId);
     }
 
-    /// @notice Mint a new seed for the owner of the contract.
-    /// @dev The function can only be called by the contract owner.
-    /// @param to The recipient of the new seed.
-    /// @param _genus The genus of the seed.
-    /// @param _species The species of the seed.
-    /// @param _variety The variety of the seed.
-    function mintForOwner(
-        address to,
-        string memory _genus,
-        string memory _species,
-        string memory _variety
-    ) external onlyOwner {
-        _mint(to, _genus, _species, _variety);
-    }
-
-    /// @notice Mint a specified amount of new seeds and transfer them to the specified address.
-    /// @dev The function can only be called by the contract owner.
-    /// @param to The recipient of the new seeds.
-    /// @param amount The amount of new seeds to mint.
-    /// @param _genus The genus of the seeds.
-    /// @param _species The species of the seeds.
-    /// @param _variety The variety of the seeds.
-    function adminMint(
-        address to,
-        uint256 amount,
-        string memory _genus,
-        string memory _species,
-        string memory _variety
-    ) public onlyOwner {
-        for (uint i = 0; i < amount; i++) {
-            S33DData memory newData = S33DData({
-                genus: _genus,
-                species: _species,
-                variety: _variety
-            });
-
-            _tokenIdCounter.increment();
-            uint256 newTokenId = _tokenIdCounter.current();
-            s33dData[newTokenId] = newData;
-            _mint(to, newTokenId);
-        }
-    }
-
-    /// @notice Burn a specific token.
-    /// @dev The function can only be called by the contract owner.
-    /// @param tokenId The ID of the token to burn.
-    function burn(uint256 tokenId) public override onlyOwner {
-        _burn(tokenId);
-    }
-
-    /// @notice Set the cost for minting a new seed.
-    /// @dev The function can only be called by the contract owner.
-    /// @param newCost The new cost for minting a seed.
+    /**
+     * @dev Set the cost to mint a token
+     * @param newCost New cost to mint a token
+     */
     function setCost(uint256 newCost) public onlyOwner {
         cost = newCost;
     }
 
-    /// @notice Withdraw all funds from the contract to the owner's address.
-    /// @dev The function can only be called by the contract owner.
-    function withdraw() public onlyOwner {
+    /**
+     * @dev Withdraw all Ether from the contract
+     */
+    function withdraw() public onlyOwner nonReentrant {
         uint balance = address(this).balance;
         payable(msg.sender).transfer(balance);
     }
