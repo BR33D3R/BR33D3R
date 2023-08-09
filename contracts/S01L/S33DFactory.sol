@@ -1,25 +1,28 @@
-// SPDX-License-Identifier: MIT
+//SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.20;
+pragma solidity ^0.8.20;
+import "@openzeppelin/contracts/proxy/Clones.sol";
+import "../interfaces/ISprout.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "./libraries/S01LLibrary.sol";
+contract CloneFactory is Ownable{
+    address public sproutImplementation;
 
-contract S33DFactory {
-    S01LLibrary.Data private s01lData;
-
-    function _createAndWhitelistS33D(address s33dAddress) internal returns (address) {
-        isWhitelisted[s33dAddress] = true;
-        s01lData.addS33DContract(s33dAddress);
-        return s33dAddress;
+    function setSproutImplementation(address _sproutImpl) external onlyOwner {
+        sproutImplementation = _sproutImpl;
     }
 
-    function S0WS33D() public onlyOwner returns (address) {
-        S33D newS33D = new S33D(this);
-        return _createAndWhitelistS33D(address(newS33D));
-    }
-
-    function S0WS33D2() public onlyOwner returns (address) {
-        S33D2 newS33D2 = new S33D2();
-        return _createAndWhitelistS33D(address(newS33D2));
+    function cutClone(
+        address newOwner, 
+        uint256 plantType, 
+        uint256 flowerCount, 
+        string memory genus, 
+        string memory species, 
+        string memory variety
+    ) external virtual returns (address) {
+        require(msg.sender == address(sproutImplementation), "Only original Sprout can clone");
+        address clonedSprout = Clones.clone(sproutImplementation);
+        ISprout(clonedSprout).initialize(newOwner, plantType, flowerCount, genus, species, variety);
+        return clonedSprout;
     }
 }
