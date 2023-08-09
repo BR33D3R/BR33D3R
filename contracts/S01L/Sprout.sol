@@ -6,8 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "./interfaces/ISprout.sol";
-import "./interfaces/ID1RT.sol";
+import "../interfaces/ISprout.sol";
 import "./S01L.sol";
 import "./S33D2.sol";
 
@@ -142,7 +141,8 @@ contract Sprout is ERC721, Ownable {
          function harvest() external onlyOwner {
         require(isPollinated && !isHarvested, "Cannot harvest at this time");
         isHarvested = true;
-        address newS33D2 = _s01l.S0WS33D2(owner());
+        _s01l.S0WS33D2(owner());
         currentGeneration++;
     }
 }
+
