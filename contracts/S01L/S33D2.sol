@@ -5,11 +5,10 @@ pragma solidity ^0.8.20;
 // Importing OpenZeppelin libraries for safe math, counter, reentrancy protection, ERC721 functionality, and ownership
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "./interfaces/IGenusSpeciesVariety.sol"; 
-import "./interfaces/SeedData.sol";
+import "../interfaces/IGenusSpeciesVariety.sol"; 
+import "../interfaces/SeedData.sol";
 import "./S33D.sol";
 import "./S01L.sol";
 
@@ -31,22 +30,9 @@ contract S33D2 is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
 
     event SeedPlanted(uint256 indexed tokenId, address indexed owner); // Event emitted when a seed is planted
 
-    /**
-     * @dev Contract constructor
-     * @param _flowerCount number of flowers to mint
-     * @param _genusSpeciesVarietyGenerator address of the GenusSpeciesVarietyGenerator contract
-     * @param s01l address of the S01L contract
-     */
-    constructor(uint256 _flowerCount, address _genusSpeciesVarietyGenerator, S01L s01l) ERC721("S33D2", "S33D2") {
-        flowerCount = _flowerCount;
-        genusSpeciesVarietyGenerator = IGenusSpeciesVariety(_genusSpeciesVarietyGenerator);
-        _s01l = s01l;
 
-        for (uint256 i = 0; i < flowerCount; i++) {
-            _tokenIdCounter.increment();
-            uint256 newTokenId = _tokenIdCounter.current();
-            _mint(msg.sender, newTokenId);
-        }
+    constructor() ERC721("S33D2", "S33D2") {
+
     }
    
     /**
@@ -73,6 +59,15 @@ contract S33D2 is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
         }
     }
 
+        function generateGenusSpeciesVariety() internal view returns (string memory, string memory, string memory) {
+        string memory genus = string(abi.encodePacked("Genus-", address(this)));
+        string memory species = string(abi.encodePacked("Species-", block.timestamp));
+        string memory variety = string(abi.encodePacked("Variety-", block.number));
+        return (genus, species, variety);
+    }
+
+
+
     /**
      * @dev Plants a seed (burns a token)
      * @param tokenId ID of the token to be burned
@@ -98,7 +93,7 @@ contract S33D2 is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
      * @param _species Species of the seed
      * @param _variety Variety of the seed
      */
-    function _mint(
+    function _mintSeed(
         address to,
         string memory _genus,
         string memory _species,
@@ -112,6 +107,15 @@ contract S33D2 is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
             variety: _variety
         });
         _mint(to, newTokenId);
+    }
+
+        function mint() public payable nonReentrant {
+        require(msg.value >= cost, "Payment is less than cost");
+        string memory genus;
+        string memory species;
+        string memory variety;
+        (address to, genus, species, variety) = generateGenusSpeciesVariety();
+        _mintSeed(address to, genus, species, variety);
     }
 
     /**
