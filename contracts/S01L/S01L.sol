@@ -3,6 +3,8 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./S33DFactory.sol";
+import "./CloneFactory.sol";
 import "./libraries/S01LLibrary.sol";
 import "./interfaces/IS33D.sol";
 import "./Sprout.sol";
@@ -10,7 +12,7 @@ import "./Sprout.sol";
 /// @title S01L contract
 /// @notice This contract handles interactions with S33D and Sprout contracts.
 /// @dev The contract uses OpenZeppelin's Ownable for owner-only functions and S01LLibrary for data operations.
-contract S01L is Ownable {
+contract S01L is Ownable, CloneFactory, S33DFactory {
     using S01LLibrary for S01LLibrary.Data;
 
     /// @dev Storage for the contract data
