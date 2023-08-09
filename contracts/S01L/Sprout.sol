@@ -120,30 +120,29 @@ contract Sprout is ERC721, Ownable {
         pollinationCount++;
     }
 
-    /**
-     * @dev Clone the sprout
-     * @param newOwner address of the new owner of the cloned sprout
-     * @param d1rtAddress address of the D1RT contract
-     * @return address of the cloned sprout
-     */
-    function cloneSprout(address newOwner, address d1rtAddress) external onlyOwner returns (address) {
+    function cloneSprout(address newOwner, S01L _s01lContract) external onlyOwner returns (address) {
         require(!isFlowering && block.timestamp >= cloningPeriodStart, "Cannot clone at this time");
-        address sproutAddress = Clones.clone(ID1RT(d1rtAddress).sproutImplementation());
-        ISprout sprout = ISprout(sproutAddress);
-        sprout.initialize(newOwner, plantType, flowerCount, genus, species, variety);
-        ID1RT(d1rtAddress).updateSproutImplementation(sproutAddress);
-        return sproutAddress;
+        
+        address clonedSproutAddress = _s01lContract.cutClone(
+            newOwner, 
+            plantType, 
+            flowerCount, 
+            genus, 
+            species, 
+            variety
+        );
+    
+        require(clonedSproutAddress != address(0), "Cloning failed");
+        return clonedSproutAddress;
     }
 
     /**
      * @dev Harvest the sprout and create S33D2 tokens
      */
-    function harvest() external onlyOwner {
+         function harvest() external onlyOwner {
         require(isPollinated && !isHarvested, "Cannot harvest at this time");
         isHarvested = true;
-        for (uint256 i = 0; i < flowerCount; i++) {
-            _s33d2.mintForOwner(owner(), genus, species, variety);
-        }
+        address newS33D2 = _s01l.S0WS33D2(owner());
         currentGeneration++;
     }
 }
