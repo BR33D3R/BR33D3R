@@ -3,13 +3,11 @@
 pragma solidity ^0.8.20;
 
 // Importing OpenZeppelin libraries for safe math, counter, reentrancy protection, ERC721 functionality, and ownership
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "./interfaces/SeedData.sol";
+import "../interfaces/SeedData.sol";
 import "./S01L.sol";
 
 /**
@@ -33,11 +31,6 @@ contract S33D is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
      */
     constructor(S01L s01l) ERC721("S33D", "S33D") {
         _s01l = s01l;
-        string memory genus;
-        string memory species;
-        string memory variety;
-        (genus, species, variety) = generateGenusSpeciesVariety();
-        _mintSeed(genus, species, variety);
     }
 
     event SeedPlanted(uint256 indexed tokenId, address indexed owner); // Event emitted when a seed is planted
@@ -102,21 +95,6 @@ contract S33D is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
         _mintSeed(genus, species, variety);
     }
 
-    /**
-     * @dev Mint new tokens and transfer them to a specific address
-     * @param to Address to receive the minted tokens
-     * @param amount Number of tokens to mint
-     */
-    function adminMint(address to, uint256 amount) external onlyOwner {
-        for (uint i=0; i<amount; i++) {
-            string memory genus;
-            string memory species;
-            string memory variety;
-            (genus, species, variety) = generateGenusSpeciesVariety();
-            _mintSeed(genus, species, variety);
-            _transfer(address(this), to, _tokenIdCounter.current());
-        }
-    }
 
     /**
      * @dev Set the cost to mint a token
