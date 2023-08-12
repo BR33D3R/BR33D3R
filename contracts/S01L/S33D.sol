@@ -1,61 +1,51 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.19;
 
-// Importing OpenZeppelin libraries for safe math, counter, reentrancy protection, ERC721 functionality, and ownership
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "../interfaces/SeedData.sol";
+import "./interfaces/SeedData.sol";
 import "./S01L.sol";
 
 /**
- * @title S33D contract
- * @dev Implements the operations of the S33D tokens
+ * @title S33D Contract
+ * @notice This contract represents unique seed tokens (S33D) that are ERC721 compliant, burnable, and have additional traits (genus, species, variety).
+ * @dev Contract is ownable, ensuring certain actions can only be performed by the contract owner.
  */
 contract S33D is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
-    using Counters for Counters.Counter; // Using OpenZeppelin utility for handling token IDs
-    using SafeMath for uint256; // Using OpenZeppelin utility for safe math operations
+    using Counters for Counters.Counter;
+    using SafeMath for uint256;
 
-    Counters.Counter private _tokenIdCounter; // Counter for assigning token IDs
-    uint256 public cost = 0.0 ether; // Cost to mint a token
+    // Counter for unique token IDs
+    Counters.Counter private _tokenIdCounter;
 
-    // Mapping from token ID to its corresponding data
+    // Cost to mint a new seed
+    uint256 public cost = 0.0001 ether;
+    S01L private _s01lContract;
+
+    event SproutCreated(address indexed owner, address sproutAddress);
+
+    mapping(address => bool) public whitelistedContracts;
+    // Mapping to store seed data against each token ID
     mapping(uint256 => S33DData) public s33dData;
-    S01L private _s01l; // Reference to the S01L contract
 
     /**
-     * @dev Contract constructor
-     * @param s01l address of the S01L contract
+     * @notice Construct an instance of the contract, minting a initial seed.
+     * @dev The initial seed traits are derived from contract's address, block timestamp, and block number.
      */
-    constructor(S01L s01l) ERC721("S33D", "S33D") {
-        _s01l = s01l;
+    constructor(string memory seedName, string memory seedSymbol) ERC721("", "") {
+        string memory seedName;
+        string memory seedSymbol;
     }
-
-    event SeedPlanted(uint256 indexed tokenId, address indexed owner); // Event emitted when a seed is planted
-
+     
     /**
-     * @dev Plants a seed (burns a token)
-     * @param tokenId ID of the token to be burned
-     */
-    function plant(uint256 tokenId) internal {
-        super._burn(tokenId);
-        emit SeedPlanted(tokenId, msg.sender);
-    }
-
-    /**
-     * @dev Burn a token and plant a sprout
-     * @param tokenId ID of the token to be burned
-     */
-    function burn(uint256 tokenId) public override nonReentrant {
-        require(ownerOf(tokenId) == _msgSender(), "ERC721Burnable: caller is not owner");
-        _s01l.burnAndPlant(tokenId); // Call the function to burn token and plant a sprout.
-    }
-
-    /**
-     * @dev Generate the Genus, Species and Variety for a token
-     * @return A tuple containing genus, species, and variety
+     * @notice Generate a new set of traits for a seed.
+     * @dev Traits are formed from the contract's address, block timestamp, and block number.
+     * @return The generated genus, species, and variety.
      */
     function generateGenusSpeciesVariety() internal view returns (string memory, string memory, string memory) {
         string memory genus = string(abi.encodePacked("Genus-", address(this)));
@@ -65,10 +55,11 @@ contract S33D is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Mint a new S33D token
-     * @param _genus Genus of the seed
-     * @param _species Species of the seed
-     * @param _variety Variety of the seed
+     * @notice Internal function to mint a seed with specific traits.
+     * @dev Creates a new seed data and stores it in the s33dData mapping against the token ID.
+     * @param _genus The genus of the seed.
+     * @param _species The species of the seed.
+     * @param _variety The variety of the seed.
      */
     function _mintSeed(string memory _genus, string memory _species, string memory _variety) internal {
         S33DData memory newData = S33DData({
@@ -84,9 +75,10 @@ contract S33D is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Public function to mint a new S33D token
+     * @notice Mint a new seed by paying the cost.
+     * @dev A seed with new traits is generated and minted. The function reverts if the payment is less than the cost.
      */
-    function mint() public payable nonReentrant {
+    function mint(string memory _genus, string memory _species, string memory _variety) public payable nonReentrant {
         require(msg.value >= cost, "Payment is less than cost");
         string memory genus;
         string memory species;
@@ -95,19 +87,61 @@ contract S33D is ERC721, ERC721Burnable, Ownable, ReentrancyGuard {
         _mintSeed(genus, species, variety);
     }
 
+    function burnAndCreateSprout(uint256 tokenId) payable public {
+        // 1. Check if the token exists (owned by someone)
+        require(ownerOf(tokenId) != address(0), "Token does not exist");
+
+        // 2. Burn the token
+        _burn(tokenId);
+
+        // 3. Ensure the call is made from a trusted S33D contract
+        require(_s01lContract.isValidS33DContract(address(this)), "Not a valid S33D contract");
+
+        // 4. Create a Sprout using the S01L contract
+        address newSprout = _s01lContract.createSprout(msg.sender);
+
+        // 5. Emit the Event
+        emit SproutCreated(msg.sender, newSprout);
+    }
+    /**
+     * @notice Mint multiple new seeds and transfer them to a specific address.
+     * @dev The function can only be called by the contract owner.
+     * @param to The address to transfer the new seeds.
+     * @param amount The number of new seeds to be minted.
+     */
+    function adminMint(address to, uint256 amount) public onlyOwner {
+        for (uint i=0; i<amount; i++) {
+            string memory genus;
+            string memory species;
+            string memory variety;
+            (genus, species, variety) = generateGenusSpeciesVariety();
+            _mintSeed(genus, species, variety);
+            _transfer(address(this), to, _tokenIdCounter.current());
+        }
+    }
+
+    function setS01LContract(address s01lAddress) external onlyOwner {
+        _s01lContract = S01L(s01lAddress);
+    }
 
     /**
-     * @dev Set the cost to mint a token
-     * @param newCost New cost to mint a token
+     * @notice Set a new cost to mint a seed.
+     * @dev The function can only be called by the contract owner.
+     * @param newCost The new cost.
      */
     function setCost(uint256 newCost) public onlyOwner {
         cost = newCost;
     }
 
+    function manageWhitelist(address contractAddress, bool isWhitelisted) external onlyOwner {
+        whitelistedContracts[contractAddress] = isWhitelisted;
+    }
+
     /**
-     * @dev Withdraw all Ether from the contract
+     * @notice Withdraw the contract balance to the owner.
+     * @dev The function can only be called by the contract owner.
      */
-    function withdraw() public onlyOwner nonReentrant {
+    function withdraw() public onlyOwner {
         uint balance = address(this).balance;
         payable(msg.sender).transfer(balance);
     }
