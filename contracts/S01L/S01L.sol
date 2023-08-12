@@ -1,96 +1,185 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./S33DFactory.sol";
-import "./CloneFactory.sol";
-import "../Libraries/S01LLibrary.sol";
-import "../interfaces/IS33D.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+import "./S33D.sol";
 import "./Sprout.sol";
 
+/**
+ * @title S01L Contract
+ * @notice This contract is responsible for managing the creation of S33D and Sprout contracts. It provides a mapping to keep track of these contracts for easy access.
+ * @dev All function calls are currently implemented without side effects
+ */
+contract S01L is Ownable {
+	using Counters for Counters.Counter;
 
-/// @title S01L contract
-/// @notice This contract handles interactions with S33D and Sprout contracts.
-/// @dev The contract uses OpenZeppelin's Ownable for owner-only functions and S01LLibrary for data operations.
-contract S01L is Ownable, CloneFactory, S33DFactory {
-    using S01LLibrary for S01LLibrary.Data;
+	// Counter to keep track of the number of S33D contracts
+	Counters.Counter private _contractIdCounter;
 
-    /// @dev Storage for the contract data
-    S01LLibrary.Data private s01lData;
+	// Counter to keep track of the number of Sprout contracts
+	Counters.Counter private _sproutIdCounter;
 
-    // Mapping to store the addresses of S33D contracts
-    mapping(uint256 => address) public s33dContracts;
+	Sprout private _sprout;
+	uint256 public cost = 0.0 ether;
 
-    // Mapping to store the addresses of Sprout contracts
-    mapping(uint256 => address) public sproutContracts;
+	// Mapping to track parent-child relationship
+	mapping(address => address) public parentChildRelationship;
 
-    constructor() S33DFactory(S01L(address(this))) {
- 
+	// Mapping to store the addresses of S33D contracts
+	mapping(uint256 => address) public s33dContracts;
+
+	// Mapping to store the addresses of Sprout contracts
+	mapping(uint256 => address) public sproutContracts;
+
+	mapping(address => bool) public trustedContracts;
+
+	// Events
+	event TrustedContractAdded(address indexed contractAddress);
+	event TrustedContractRemoved(address indexed contractAddress);
+	event S33DContractCreated(
+		address indexed contractAddress,
+		uint256 contractId
+	);
+	event SproutContractCreated(
+		address indexed contractAddress,
+		uint256 sproutId,
+		address parent
+	);
+
+	modifier onlyTrustedContracts() {
+		require(
+			trustedContracts[msg.sender],
+			"Caller is not a trusted contract"
+		);
+		_;
+	}
+
+	function addTrustedContract(address _contract) internal {
+		trustedContracts[_contract] = true;
+		emit TrustedContractAdded(_contract);
+	}
+
+	function removeTrustedContract(address _contract) public onlyOwner {
+		trustedContracts[_contract] = false;
+		emit TrustedContractRemoved(_contract);
+	}
+
+	/**
+	 * @notice Create a new instance of S33D and store its address
+	 * @dev Requires contract ownership to prevent unauthorized contract creation
+	 * @return The address of the newly created S33D contract
+	 */
+    function S0WS33D(string memory seedName, string memory seedSymbol) public payable returns (address) {
+        require(cost == msg.value);
+        S33D newS33D = new S33D(seedName, seedSymbol); 
+
+        // Transfer ownership of the newly created S33D contract to msg.sender
+        newS33D.transferOwnership(msg.sender);
+
+        // Increment the contract counter
+        _contractIdCounter.increment();
+
+        // Get the current counter value
+        uint256 newContractId = _contractIdCounter.current();
+
+        // Store the address of the newly created contract
+        s33dContracts[newContractId] = address(newS33D);
+
+        // Grant the newly created S33D contract the trusted role
+        addTrustedContract(address(newS33D));
+
+        emit S33DContractCreated(address(newS33D), newContractId);
+
+        // Return the address of the newly created contract
+        return address(newS33D);
     }
 
+	function createSprout(address newOwner) public onlyTrustedContracts returns  (address) {
+		require(trustedContracts[msg.sender], "Caller is not a trusted S33D contract");
+        // Create a new instance of Sprout
+		Sprout newSprout = new Sprout();
 
-    /// @notice Plants a new Sprout contract.
-    /// @dev This function can only be called by the owner.
-    /// @return The address of the newly planted Sprout contract.
-    function plantSprout() public onlyOwner returns (address) {
-        Sprout newSprout = new Sprout();
-        return s01lData.plantSprout(address(newSprout));
-    }
+		// Transfer ownership of the newly created Sprout contract to newOwner
+		newSprout.transferOwnership(newOwner);
 
-    function cutClone(
-        address newOwner, 
-        uint256 plantType, 
-        uint256 flowerCount, 
-        string memory genus, 
-        string memory species, 
-        string memory variety
-    ) external virtual override returns (address) {
-        require(msg.sender == address(sproutImplementation), "Only original Sprout can clone");
+		// Update parent-child relationship if the sender is a Sprout
+		parentChildRelationship[msg.sender] = address(newSprout);
+		
 
-        address clonedSprout = Clones.clone(sproutImplementation);
-        ISprout(clonedSprout).initialize(newOwner, plantType, flowerCount, genus, species, variety);
-        
-        return clonedSprout;
-    }
+		// Increment the sprout counter
+		_sproutIdCounter.increment();
 
-    /// @notice Burns a token and plants a new Sprout contract.
-    /// @dev This function requires the caller to be whitelisted and to own the token.
-    /// @param tokenId The ID of the token to burn.
-    function burnAndPlant(uint256 tokenId) public {
-        require(s01lData.isWhitelisted(msg.sender), "Only whitelisted contracts can burn and plant");
+		// Get the current counter value
+		uint256 newSproutId = _sproutIdCounter.current();
 
-        // Get the relevant contract address
-        address relevantS33DContract;
-        if (msg.sender == s01lData.getS33DContract(s01lData.getContractIdCounter())) {
-            relevantS33DContract = s01lData.getS33DContract(s01lData.getContractIdCounter());
-        } else if (msg.sender == s01lData.getS33DContract(s01lData.getSproutIdCounter())) {
-            relevantS33DContract = s01lData.getS33DContract(s01lData.getSproutIdCounter());
-        } else {
-            revert("Invalid sender");
+		// Store the address of the newly created sprout
+		sproutContracts[newSproutId] = address(newSprout);
+
+		emit SproutContractCreated(address(newSprout), newSproutId, msg.sender);
+
+		// Return the address of the newly created sprout
+		return address(newSprout);
+	}
+
+	/**
+	 * @notice Get the address of a S33D contract given its ID
+	 * @param contractId The ID of the S33D contract to fetch
+	 * @return The address of the S33D contract
+	 */
+	function getS33DContract(uint256 contractId) public view returns (address) {
+		// Return the address of the requested S33D contract
+		return s33dContracts[contractId];
+	}
+
+	/**
+	 * @notice Get the address of a Sprout contract given its ID
+	 * @param contractId The ID of the Sprout contract to fetch
+	 * @return The address of the Sprout contract
+	 */
+	function getSproutContract(
+		uint256 contractId
+	) public view returns (address) {
+		// Return the address of the requested Sprout contract
+		return sproutContracts[contractId];
+	}
+
+    function isValidS33DContract(address _contract) public view returns (bool) {
+            return trustedContracts[_contract];
         }
 
-        IS33D s33dContract = IS33D(relevantS33DContract);
-        require(s33dContract.ownerOf(tokenId) == msg.sender, "Only owner can burn and plant");
+	/**
+	 * @notice Get the ID of the last created S33D contract
+	 * @return The ID of the last created S33D contract
+	 */
+	function getLastS33DContractId() public view returns (uint256) {
+		return _contractIdCounter.current();
+	}
 
-        // Burn the NFT
-        s33dContract.burn(tokenId);
+	/**
+	 * @notice Get the address of the last created S33D contract
+	 * @return The address of the last created S33D contract
+	 */
+	function getLastS33DContract() public view returns (address) {
+		uint256 lastId = getLastS33DContractId();
+		return s33dContracts[lastId];
+	}
 
-        // Create a new sprout
-        plantSprout();
-    }
+	/**
+	 * @notice Get the ID of the last created Sprout contract
+	 * @return The ID of the last created Sprout contract
+	 */
+	function getLastSproutId() public view returns (uint256) {
+		return _sproutIdCounter.current();
+	}
 
-    /// @notice Retrieves the address of a S33D contract by ID.
-    /// @param contractId The ID of the S33D contract to retrieve.
-    /// @return The address of the S33D contract.
-    function getS33DContract(uint256 contractId) public view returns (address) {
-        return s01lData.getS33DContract(contractId);
-    }
-
-    /// @notice Retrieves the address of a Sprout contract by ID.
-    /// @param contractId The ID of the Sprout contract to retrieve.
-    /// @return The address of the Sprout contract.
-    function getSproutContract(uint256 contractId) public view returns (address) {
-        return s01lData.getSproutContract(contractId);
-    }
+	/**
+	 * @notice Get the address of the last created Sprout contract
+	 * @return The address of the last created Sprout contract
+	 */
+	function getLastSproutContract() public view returns (address) {
+		uint256 lastId = getLastSproutId();
+		return sproutContracts[lastId];
+	}
 }
