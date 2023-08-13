@@ -1,0 +1,36 @@
+specVersion: 0.0.5
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: S01L
+    network: optimism-goerli
+    source:
+      address: "0xF083Ca2134f6607DCA417108A1F357eDbBA0B3ed"
+      abi: S01L
+      startBlock: 13246073
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - OwnershipTransferred
+        - S33DContractCreated
+        - SproutContractCreated
+        - TrustedContractAdded
+        - TrustedContractRemoved
+      abis:
+        - name: S01L
+          file: ./abis/S01L.json
+      eventHandlers:
+        - event: OwnershipTransferred(indexed address,indexed address)
+          handler: handleOwnershipTransferred
+        - event: S33DContractCreated(indexed address,uint256)
+          handler: handleS33DContractCreated
+        - event: SproutContractCreated(indexed address,uint256,address)
+          handler: handleSproutContractCreated
+        - event: TrustedContractAdded(indexed address)
+          handler: handleTrustedContractAdded
+        - event: TrustedContractRemoved(indexed address)
+          handler: handleTrustedContractRemoved
+      file: ./src/s-01-l.ts
