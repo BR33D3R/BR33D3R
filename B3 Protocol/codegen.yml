@@ -1,0 +1,8 @@
+overwrite: true
+schema: "https://api.thegraph.com/subgraphs/name/br33d3r
+generates:
+  substreams/graphql.tsx:
+    plugins:
+      - "typescript"
+      - "typescript-operations"
+      - "typescript-apollo-client"
